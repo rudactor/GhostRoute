@@ -1,80 +1,131 @@
 # GhostRoute
 
-**Стек:**
+**GhostRoute** — мобильное приложение (Android/iOS) с встроенным VPN-подключением по протоколу **VLESS**.
 
-* **Протокол:** VLESS
-* **Панель узлов:** **Marzban** (управляет юзерами/подписками/узлами)
-* **Backend:** FastAPI (тонкий шлюз к API Marzban + своя авторизация/JWT)
-* **Mobile:** React Native (Android/iOS) — авторизация, выбор узла/тарифа, получение `vless://`/QR
+* **Backend:** FastAPI (связь с панелью **Marzban**).
+* **Mobile:** React Native (bare, с нативными модулями) + sing-box/xray-core (через Android VpnService / iOS Network Extension).
+* **Протокол:** VLESS (конфиги генерируются в Marzban и применяются прямо в приложении).
 
----
-
-## Архитектура (коротко)
-
-```
-RN App ──HTTPS──► FastAPI (GhostRoute API) ──► Marzban API ──► Узлы VLESS
-             ▲             │
-             └──── JWT ────┘
-```
-
-* **Marzban** хранит пользователей, планы, подписки, трафик, генерирует VLESS-конфиги.
-* **FastAPI**: ваша бизнес-логика, собственные аккаунты, лимиты, биллинг (опц.), кэш витрин.
-* **Мобильное приложение**: логин, просмотр планов/узлов, получение `vless://`/QR, просмотр статистики.
 
 ---
 
-## Backend (FastAPI) — ENV
+## 🚀 Функционал
 
-`.env` пример:
+* Авторизация пользователя (FastAPI + JWT).
+* Получение доступных тарифов и узлов (из Marzban).
+* Управление подпиской: активация, продление, просмотр статуса (трафик, срок).
+* **Подключение VPN прямо в приложении**:
+
+  * Android → `VpnService` + sing-box core.
+  * iOS → `PacketTunnelProvider` (Network Extension) + sing-box core.
+* Управление подключением: **Connect / Disconnect**, отображение скорости и трафика.
+* Экспорт/копирование `vless://` и QR (опционально).
+
+---
+
+## 🧭 Архитектура
 
 ```
-APP_NAME=GhostRoute
-ENV=dev
-SECRET_KEY=change_me
-
-# Marzban
-MARZBAN_BASE_URL=https://marzban.example.com
-MARZBAN_API_KEY=xxxxx   # admin token
-MARZBAN_TIMEOUT=10
-
-# CORS
-CORS_ORIGINS=["http://localhost:19006","http://localhost:8081"]
+React Native (UI)
+   │
+   ▼
+Native modules:
+   ├─ Android: VpnService + sing-box AAR
+   └─ iOS: NEPacketTunnelProvider + sing-box xcframework
+   │
+   ▼
+Core (sing-box/xray) → Проксирование VLESS
+   │
+   ▼
+Marzban → VLESS узлы/Xray
+   │
+   ▼
+Интернет
 ```
 
-### Минимальные эндпоинты
+**FastAPI** выступает как шлюз:
 
-* `GET /health` — жив ли шлюз
-* `POST /auth/login` — ваш логин → JWT (внутренняя учётка GhostRoute)
-* `GET /catalog/plans` — список тарифов из Marzban
-* `GET /catalog/nodes` — список узлов/регионов (агрегация из Marzban)
-* `POST /subscriptions` — создать/продлить подписку (создать/обновить user в Marzban, назначить план, дедлайн/трафик)
-* `GET /subscriptions/{id}` — статус (трафик used/limit, expiry)
-* `GET /subscriptions/{id}/config` — **VLESS**: `vless://...` + QR (base64 PNG/SVG)
-* `POST /me/devices/register` — регистрируем устройство (fingerprint)
-* `GET /me/usage` — агрегированная статистика по Marzban
+* `/auth` — авторизация (JWT).
+* `/catalog` — тарифы/узлы.
+* `/subscriptions` — подписки.
+* `/config` — отдаёт нормализованный JSON-конфиг для core.
 
-> Все «мутации» делаются через **Marzban API** (админ-токен), GhostRoute только валидирует и кэширует.
+---
 
-### Быстрый запуск
+## 📦 Технологии
+
+* **Backend**: Python 3.11+, FastAPI, SQLAlchemy/SQLModel, PostgreSQL/SQLite, Redis (кэш), Docker.
+* **Marzban**: панель управления Xray (VLESS), API-токен.
+* **Mobile**: React Native bare (Android/iOS), sing-box/xray-core (через gomobile), react-navigation, react-query, SecureStore/Keychain.
+
+---
+
+## 📁 Структура проекта
+
+```
+ghostroute/
+├─ backend/         # FastAPI
+│  ├─ app/
+│  │  ├─ api/       # auth, catalog, subscriptions
+│  │  ├─ core/      # config, security
+│  │  ├─ models/    # user, subscription
+│  │  └─ services/  # marzban client
+│  └─ tests/
+├─ mobile/          # React Native
+│  ├─ android/      # VpnService + sing-box AAR
+│  ├─ ios/          # PacketTunnelExtension + sing-box
+│  ├─ src/          # RN UI (screens, api, hooks)
+│  └─ native/       # JS bridge к VPN модулям
+└─ docker/
+```
+
+---
+
+## 🔧 Требования
+
+* **Backend:** Python 3.11+, Docker, PostgreSQL (или SQLite dev).
+* **Mobile:** Node 18+, Yarn, Xcode (iOS), Android Studio (Android).
+* **Сборка core:** Go + gomobile (для sing-box/xray).
+
+---
+
+## 🏃 Быстрый старт (Dev)
+
+### Backend
 
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
 cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
+### Mobile
+
+```bash
+cd mobile
+yarn install
+# Android
+yarn android
+# iOS
+cd ios && pod install && cd ..
+yarn ios
+```
+
 ---
 
-## Mobile (React Native)
+## ⚙️ Конфигурация
 
-* Экраны: **Login → Plans → Nodes → MySub → Get Config**
-* Получение `vless://` + QR с `/subscriptions/{id}/config`.
-* Кнопки: **Copy**, **Show QR**, **Open in…** (передача `vless://` в установленный клиент или сохранение в файл).
-* Токены хранить в **SecureStore/Keychain**.
+### Backend `.env`
 
-`.env`
+```
+APP_NAME=GhostRoute
+SECRET_KEY=change_me
+MARZBAN_BASE_URL=https://panel.example.com
+MARZBAN_API_KEY=your_admin_token
+DATABASE_URL=sqlite:///./ghostroute.db
+```
+
+### Mobile `.env`
 
 ```
 API_BASE_URL=http://192.168.0.10:8000
@@ -82,61 +133,69 @@ API_BASE_URL=http://192.168.0.10:8000
 
 ---
 
-## Примеры ответов
+## 📱 Основные экраны (RN)
 
-`GET /catalog/plans`
+* **Login** — авторизация.
+* **Plans** — список тарифов.
+* **Nodes** — доступные сервера.
+* **My Subscription** — трафик, дата окончания.
+* **Connect** — кнопка Connect/Disconnect, статус VPN, скорость.
+* **Settings** — язык, тема.
 
-```json
-[
-  {"id":"basic-50","name":"Basic 50GB","traffic_gb":50,"period_days":30,"price":0},
-  {"id":"pro-200","name":"Pro 200GB","traffic_gb":200,"period_days":30,"price":0}
-]
-```
+---
 
-`GET /subscriptions/123/config`
+## 🔌 Пример API → Core
+
+`GET /subscriptions/{id}/config`
 
 ```json
 {
-  "uri": "vless://UUID@host:443?encryption=none&security=reality&sni=...#GhostRoute-Pro",
-  "qr": "data:image/png;base64,iVBORw0KGgo..."
+  "outbounds": [
+    {
+      "type": "vless",
+      "server": "example.com",
+      "server_port": 443,
+      "uuid": "UUID",
+      "tls": {
+        "enabled": true,
+        "server_name": "sni.example.com"
+      }
+    }
+  ],
+  "inbounds": [
+    { "type": "tun", "inet4_address": "10.0.0.2/30", "mtu": 1500 }
+  ]
 }
 ```
 
 ---
 
-## Подключение к Marzban (шлюз)
+## 🔐 Безопасность
 
-* Авторизация к Marzban: заголовок `Authorization: Bearer <MARZBAN_API_KEY>`.
-* Основные операции:
-
-  * **Создать/обновить пользователя** (`/api/user`) с лимитами трафика/сроком.
-  * Получить **линки**/подписки пользователя (`/api/user/{username}` → links).
-  * Статистика трафика и expiry — также из `/api/user/...`.
-
-> Рекомендуется кэшировать справочники (планы/узлы) на 60–300с.
+* HTTPS везде (API + Marzban).
+* JWT access+refresh.
+* Rate limiting на бекенде.
+* SecureStore/Keychain для токенов.
+* Опционально certificate pinning в мобильном.
 
 ---
 
-## Безопасность
+## 📈 Roadmap
 
-* Только **HTTPS**; ограничить CORS, включить rate-limit на мутации.
-* Админ-токен Marzban хранить как секрет, не возвращать в ответы.
-* Логи — без чувствительных данных.
-* Опционно: сертификат-пиннинг в мобильном клиенте.
+**Фаза 1 (MVP)**
 
----
+* FastAPI: auth, catalog, subscriptions.
+* Android: VpnService + sing-box, Connect/Disconnect.
+* RN UI: Login, Plans, Nodes, Connect.
 
-## Ограничения приложения
+**Фаза 2**
 
-* GhostRoute **не** выполняет системный VPN внутри RN. Он **выдаёт конфиг** (`vless://`/QR) для клиента, поддерживающего VLESS, или для системного VPN-профиля через нативный модуль (если вы добавите его отдельно).
-* Инструкции по обходу ограничений не предоставляются.
+* iOS: Network Extension (PacketTunnelProvider).
+* Usage stats (трафик, скорость).
+* Уведомления о 80/100% лимита.
 
----
+**Фаза 3**
 
-## Roadmap (по делу)
-
-* [ ] Локальные роли (user/admin) + аудит
-* [ ] Квоты/лифты (soft/hard cap), уведомления о 80/100%
-* [ ] Вебхуки/CRON: авто-продление, авто-дизабл просроченных
-* [ ] Локализация RU/EN, тёмная тема
-* [ ] E2E Detox + simple CI
+* CI/CD (GitHub Actions: backend build + mobile EAS/Gradle/Xcode).
+* Мониторинг (Prometheus, Grafana, Sentry).
+* Локализация, dark mode.
