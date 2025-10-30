@@ -1,0 +1,150 @@
+# ----------------------------------
+# OS-specific
+# ----------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+*.swp
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ----------------------------------
+# Python / FastAPI backend
+# ----------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.log
+.env
+.env.*
+.venv/
+venv/
+*.sqlite3
+*.db
+.mypy_cache/
+.pytest_cache/
+coverage/
+htmlcov/
+
+# Poetry / pip-tools
+poetry.lock
+pip-wheel-metadata/
+pip-log.txt
+
+# ----------------------------------
+# Node.js / React Native frontend
+# ----------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.pnpm-debug.log*
+.expo/
+.expo-shared/
+.expo-go/
+.expo-dev-client/
+.expo/*
+dist/
+web-build/
+
+# Metro / Bundler cache
+.expo
+.expo-shared
+.expo-go
+.expo-dev-client
+.expo/*
+.cache/
+.expo-cache/
+
+# React Native
+android/.gradle/
+android/.idea/
+android/local.properties
+android/.cxx/
+android/captures/
+android/app/build/
+android/build/
+*.iml
+
+# Xcode / iOS
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace
+ios/Podfile.lock
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+
+# Expo
+.expo/
+web-build/
+
+# ----------------------------------
+# Go / gomobile builds (sing-box / xray)
+# ----------------------------------
+*.aar
+*.xcframework
+*.a
+*.so
+*.o
+*.dll
+
+# ----------------------------------
+# Docker / CI
+# ----------------------------------
+docker-compose.override.yml
+docker-data/
+.docker/
+*.pid
+
+# ----------------------------------
+# IDE / Editors
+# ----------------------------------
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ----------------------------------
+# Logs / Temp
+# ----------------------------------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.old
+
+# ----------------------------------
+# Secrets
+# ----------------------------------
+secrets.*
+*.key
+*.crt
+*.pem
